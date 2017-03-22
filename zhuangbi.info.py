@@ -1,4 +1,4 @@
-import time, os, os.path, re
+import sys, time, os, os.path, re
 from multiprocessing.dummy import Pool as ThreadPool
 
 import requests
@@ -80,9 +80,13 @@ class ZhuangbiGetter():
         name = re.sub(r'\\/<>\|', '', name)
         return name
 
-def main():
-    getter = ZhuangbiGetter(20)
+def main(n=10):
+    getter = ZhuangbiGetter(n)
     getter.get()
 
 if __name__=='__main__':
-    main()
+    n = 10
+    if len(sys.argv) > 1:
+        if sys.argv[1].isdigit():
+            n = int(sys.argv[1])
+    main(n)

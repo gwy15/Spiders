@@ -1,4 +1,5 @@
 .vscode/
-img/
 __pycache__/
+/zhuangbi.info/img
 *.txt
+*.conf

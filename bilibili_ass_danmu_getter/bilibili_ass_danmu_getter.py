@@ -27,6 +27,7 @@ class VideoItem():
         self.writeXML(xmlDanmu, title)
         assDanmu = Niconvert.convert(xmlDanmu)
         self.writeAss(assDanmu, title)
+        print('%d\t%s finished.'%(cid, title))
 
     def getSingleTitle(self, aid):
         url = 'https://www.bilibili.com/video/av%d/'%aid
@@ -70,18 +71,17 @@ class VideoItem():
             os.mkdir('xml')
         with open(os.path.join('xml', '%s.xml'%(filename)), 'w', encoding='utf-8') as f:
             f.write(xml)
+class BanguimiEpisode(VideoItem):
+    def __init__(self, episodeID):
+        self.episodeID = episodeID
 
-class Bangumi(VideoItem):
-    def __init__(self, id):
-        self.banguimiID = id
-    def banguimiRun(self):
-        episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
-        for item in episodesInfo:
-            eID = item[2]
-            self.getEpisodeDanmu(eID)
+    def run(self):
+        self.getEpisodeDanmu(self.episodeID)
+
     def getEpisodeDanmu(self, episodeID):
         index, title, cid = self.getSingleEpisodeInfo(episodeID)
         self.getDanmu(cid, index+' '+title)
+
     def getSingleEpisodeInfo(self, episodeID):
         '''
         返回 [(indexTitle, title, cid), ]
@@ -91,6 +91,15 @@ class Bangumi(VideoItem):
         js = json.loads(c)
         j = js['result']['currentEpisode']
         return (j['indexTitle'], j['longTitle'], int(j['danmaku']))
+
+class Bangumi():
+    def __init__(self, id):
+        self.banguimiID = id
+    def banguimiRun(self):
+        episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
+        for item in episodesInfo:
+            eID = item[2]
+            BanguimiEpisode(eID).run()
 
     def getEpisodesInfoFromBangumiID(self, BID):
         r'''
@@ -119,7 +128,10 @@ class DanmuGetter():
         通过 identifier，找到对应的 av 号。
         '''
         if isinstance(identifier, str):
-            if re.match(r'(https?://)?bangumi\.bilibili\.com/anime/(\d+)/?', identifier):
+            if re.match(r'(https?://)?bangumi\.bilibili\.com/anime/\d+/play#\d+?', identifier):
+                episodeID = int(re.findall(r'#play(\d+)', identifier)[0])
+
+            elif re.match(r'(https?://)?bangumi\.bilibili\.com/anime/(\d+)/?', identifier):
                 bangumiID = int(re.findall(r'\d+', identifier)[0])
                 Bangumi(bangumiID).banguimiRun()
             elif re.match(r'(https?://)?www\.bilibili\.com/video/av\d+/?', identifier):

@@ -7,24 +7,20 @@ class VideoItem():
     def __init__(self, id):
         self.aid = id
 
-    def run(self, aid=None, title=None):
+    def run(self):
         """
         通过 av 号，下载并转换所有的弹幕。
         """
-        if aid is None:
-            aid = self.aid
+        aid = self.aid
         CidInfo = self.getCidInfoFromAid(aid)
 
         for item in CidInfo:
-            if title is None:
-                if len(CidInfo) == 1:
-                    ptitle = self.getSingleTitle(aid)
-                else:
-                    ptitle = item[1]
+            cid = item[0]
+            if len(CidInfo) == 1: # 单 P
+                title = self.getSingleTitle(aid)
             else:
-                ptitle = title
-            self.getDanmu(item[0], ptitle)
-            print('cid = %d, title = %s'%(item[0], ptitle))
+                title = item[1]
+            self.getDanmu(cid, title) # 使用分 P 的标题
             
     def getDanmu(self, cid, title):
         xmlDanmu = self.getXMLDanmu(cid)
@@ -46,7 +42,7 @@ class VideoItem():
 
     def getCidInfoFromAid(self, aid):
         r'''
-        通过 av 号得到所有的 cid，返回 [(cid, title, page)]
+        通过 av 号得到所有的分 P 信息，返回 [(cid, title, page)]
         '''
         url = 'http://www.bilibili.com/widget/getPageList?aid=%d'%aid
         page = requests.get(url).content.decode()
@@ -82,17 +78,10 @@ class Bangumi(VideoItem):
         episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
         for item in episodesInfo:
             eID = item[2]
-            index, title, cid = self.getSingleEpisodeInfo(eID)
-            self.getDanmu(cid, index+' '+title)
-
-        # s = set()
-        # for item in episodesInfo:
-        #     s.add(item[0])
-        # if len(s) == 1: # 同 av
-        #     self.run(episodesInfo[0][0])
-        # else:
-        #     for item in episodesInfo:
-        #         self.run(item[0], title=(item[1] + ' ' + item[3]))
+            self.getEpisodeDanmu(eID)
+    def getEpisodeDanmu(self, episodeID):
+        index, title, cid = self.getSingleEpisodeInfo(episodeID)
+        self.getDanmu(cid, index+' '+title)
     def getSingleEpisodeInfo(self, episodeID):
         '''
         返回 [(indexTitle, title, cid), ]
@@ -168,5 +157,5 @@ def test():
     DanmuGetter('https://bangumi.bilibili.com/anime/5800/') # 番组测试（不同 av)
 
 if __name__=='__main__':
-    main()
-    # test()
+    # main()
+    test()

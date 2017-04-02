@@ -79,17 +79,31 @@ class Bangumi(VideoItem):
     def __init__(self, id):
         self.banguimiID = id
     def banguimiRun(self):
-        episodeInfo = self.getEpisodeInfoFromBangumiID(self.banguimiID)
-        s = set()
-        for item in episodeInfo:
-            s.add(item[0])
-        if len(s) == 1: # 同 av
-            self.run(episodeInfo[0][0])
-        else:
-            for item in episodeInfo:
-                self.run(item[0], title=(item[1] + ' ' + item[3]))
+        episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
+        for item in episodesInfo:
+            eID = item[2]
+            index, title, cid = self.getSingleEpisodeInfo(eID)
+            self.getDanmu(cid, index+' '+title)
 
-    def getEpisodeInfoFromBangumiID(self, BID):
+        # s = set()
+        # for item in episodesInfo:
+        #     s.add(item[0])
+        # if len(s) == 1: # 同 av
+        #     self.run(episodesInfo[0][0])
+        # else:
+        #     for item in episodesInfo:
+        #         self.run(item[0], title=(item[1] + ' ' + item[3]))
+    def getSingleEpisodeInfo(self, episodeID):
+        '''
+        返回 [(indexTitle, title, cid), ]
+        '''
+        url = 'http://bangumi.bilibili.com/web_api/episode/%d.json'%episodeID
+        c = requests.get(url).content.decode()
+        js = json.loads(c)
+        j = js['result']['currentEpisode']
+        return (j['indexTitle'], j['longTitle'], int(j['danmaku']))
+
+    def getEpisodesInfoFromBangumiID(self, BID):
         r'''
         返回 banguimi ID 的信息 
         rtype: [(av, index, episode_id, index_title)]
@@ -107,15 +121,14 @@ class Bangumi(VideoItem):
 
         res = []
         for item in js['result']['episodes']:
-            res.append((int(item['av_id']), item['index'], int(item['mid']), item['index_title']))
+            res.append((int(item['av_id']), item['index'], int(item['episode_id']), item['index_title']))
         return res
 
 class DanmuGetter():
-    def __init__(self, identifier):
-        r'''
+    def __init__(self, identifier, isbangumi=False):
+        '''
         通过 identifier，找到对应的 av 号。
         '''
-        self.isBangumi = False
         if isinstance(identifier, str):
             if re.match(r'(https?://)?bangumi\.bilibili\.com/anime/(\d+)/?', identifier):
                 bangumiID = int(re.findall(r'\d+', identifier)[0])
@@ -127,10 +140,33 @@ class DanmuGetter():
                 print('str no match. str = %s'%identifier)
                 quit()
         elif isinstance(identifier, int):
-            VideoItem(identifier).run()
+            if isbangumi:
+                Bangumi(identifier).banguimiRun()
+            else:
+                VideoItem(identifier).run()
 
-if __name__=='__main__':
+def main():
+    import sys
+    if len(sys.argv) > 1:
+        isbangumi = True
+        id = None
+        for item in sys.argv[1:]:
+            if item[0] == '-':
+                isbangumi = True if item[1] == 'b' else False
+            if item.isdecimal():
+                id = int(item)
+        DanmuGetter(id, isbangumi)
+    else:
+        DanmuGetter(input('input: '))
+        
+
+
+def test():
     DanmuGetter(1687843) # 单 P 测试
     DanmuGetter('https://www.bilibili.com/video/av5415480') # 多 P 测试
     DanmuGetter('http://bangumi.bilibili.com/anime/2993')   # 番组测试（同 av)
     DanmuGetter('https://bangumi.bilibili.com/anime/5800/') # 番组测试（不同 av)
+
+if __name__=='__main__':
+    main()
+    # test()

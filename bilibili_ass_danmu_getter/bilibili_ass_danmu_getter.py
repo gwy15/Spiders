@@ -3,84 +3,57 @@ import requests
 from bs4 import BeautifulSoup as bs
 import Niconvert
 
-class Danmu():
-    def __init__(self, identifier):
-        r'''
-        通过 identifier，找到对应的 av 号。
-        '''
-        self.isBangumi = False
-        if isinstance(identifier, str):
-            if re.match(r'(https?://)?bangumi\.bilibili\.com/anime/(\d+)/', identifier):
-                self.isBangumi = True
-                self.bangumiID = int(re.findall(r'\d+', identifier)[0])
-                self.aid = self.getAidFromBangumiID(self.bangumiID)
-            elif re.match(r'(https?://)?www\.bilibili\.com/video/av\d+/', identifier):
-                self.aid = int(re.findall(r'\d+', identifier)[0])
-            else:
-                print('str no match. str = %s'%identifier)
-                quit()
-        elif isinstance(identifier, int):
-            self.aid = identifier
+class VideoItem():
+    def __init__(self, id):
+        self.aid = id
 
-    def run(self):
-        r"""
+    def run(self, aid=None, title=None):
+        """
         通过 av 号，下载并转换所有的弹幕。
         """
-        self.titleCidDict = self.getCidDictFromAid(self.aid)
-        print(self.titleCidDict)
-        for cid in self.titleCidDict.keys():
-            xmlDanmu = self.getXMLDanmu(cid)
-            self.writeXML(xmlDanmu, self.titleCidDict[cid])
-            assDanmu = Niconvert.convert(xmlDanmu)
-            self.writeAss(assDanmu, self.titleCidDict[cid])
+        if aid is None:
+            aid = self.aid
+        CidInfo = self.getCidInfoFromAid(aid)
 
-    def getAidFromBangumiID(self, BID):
-        r'''
-        返回 banguimi ID 对应的 Av 号
-        '''
-        url = 'http://bangumi.bilibili.com/jsonp/seasoninfo/%d.ver?&jsonp=jsonp'%BID
-        page = requests.get(url).content.decode()
-        try:
-            js = json.loads(page)
-        except:
-            try:
-                js = json.loads(page[19:-2])
-            except:
-                print('failed in getAidFromBangumiID(bid = %d)'%BID)
-                return
-
-        self.urls = []
-        for item in js['result']['episodes']:
-            self.urls.append(item['webplay_url'])
-
-        return js['result']['episodes'][0]['av_id']
-
-
+        for item in CidInfo:
+            if title is None:
+                if len(CidInfo) == 1:
+                    ptitle = self.getSingleTitle(aid)
+                else:
+                    ptitle = item[1]
+            else:
+                ptitle = title
+            self.getDanmu(item[0], ptitle)
+            print('cid = %d, title = %s'%(item[0], ptitle))
             
+    def getDanmu(self, cid, title):
+        xmlDanmu = self.getXMLDanmu(cid)
+        self.writeXML(xmlDanmu, title)
+        assDanmu = Niconvert.convert(xmlDanmu)
+        self.writeAss(assDanmu, title)
 
-    def getTitle(self, ):
+    def getSingleTitle(self, aid):
+        url = 'https://www.bilibili.com/video/av%d/'%aid
         page = requests.get(url).content.decode()
         
         soup = bs(page, 'html.parser')
-        self.title = soup.head.title.text
-        self.title.replace(' 番剧 bilibili 哔哩哔哩弹幕视频网', '')
-        self.title = re.sub(r'_.{2}_.{2}_bilibili_哔哩哔哩', '', self.title)
-        self.title.replace('?', '？')
-        self.title = re.sub(r'[\\/:*?"<>|]', '', self.title)
-        print(self.title)
+        title = soup.head.title.text
+        title.replace(' 番剧 bilibili 哔哩哔哩弹幕视频网', '')
+        title = re.sub(r'_.{2,}_.{2,}_bilibili_哔哩哔哩', '', title)
+        title.replace('?', '？')
+        title = re.sub(r'[\\/:*?"<>|]', '', title)
+        return title
 
-
-
-    def getCidDictFromAid(self, aid):
+    def getCidInfoFromAid(self, aid):
         r'''
-        通过 av 号得到所有的 cid，储存在一个 Dict 中，dict[cid] = title。
+        通过 av 号得到所有的 cid，返回 [(cid, title, page)]
         '''
         url = 'http://www.bilibili.com/widget/getPageList?aid=%d'%aid
         page = requests.get(url).content.decode()
         js = json.loads(page)
-        res = {}
+        res = []
         for item in js:
-            res[int(item['cid'])] = item['pagename']
+            res.append((int(item['cid']), item['pagename'], int(item['page'])))
         return res
 
     def getXMLDanmu(self, cid):
@@ -102,6 +75,62 @@ class Danmu():
         with open(os.path.join('xml', '%s.xml'%(filename)), 'w', encoding='utf-8') as f:
             f.write(xml)
 
+class Bangumi(VideoItem):
+    def __init__(self, id):
+        self.banguimiID = id
+    def banguimiRun(self):
+        episodeInfo = self.getEpisodeInfoFromBangumiID(self.banguimiID)
+        s = set()
+        for item in episodeInfo:
+            s.add(item[0])
+        if len(s) == 1: # 同 av
+            self.run(episodeInfo[0][0])
+        else:
+            for item in episodeInfo:
+                self.run(item[0], title=(item[1] + ' ' + item[3]))
+
+    def getEpisodeInfoFromBangumiID(self, BID):
+        r'''
+        返回 banguimi ID 的信息 
+        rtype: [(av, index, episode_id, index_title)]
+        '''
+        url = 'http://bangumi.bilibili.com/jsonp/seasoninfo/%d.ver?&jsonp=jsonp'%BID
+        page = requests.get(url).content.decode()
+        try:
+            js = json.loads(page)
+        except:
+            try:
+                js = json.loads(page[19:-2])
+            except:
+                print('failed in getAidFromBangumiID(bid = %d)'%BID)
+                return
+
+        res = []
+        for item in js['result']['episodes']:
+            res.append((int(item['av_id']), item['index'], int(item['mid']), item['index_title']))
+        return res
+
+class DanmuGetter():
+    def __init__(self, identifier):
+        r'''
+        通过 identifier，找到对应的 av 号。
+        '''
+        self.isBangumi = False
+        if isinstance(identifier, str):
+            if re.match(r'(https?://)?bangumi\.bilibili\.com/anime/(\d+)/?', identifier):
+                bangumiID = int(re.findall(r'\d+', identifier)[0])
+                Bangumi(bangumiID).banguimiRun()
+            elif re.match(r'(https?://)?www\.bilibili\.com/video/av\d+/?', identifier):
+                aid = int(re.findall(r'\d+', identifier)[0])
+                VideoItem(aid).run()
+            else:
+                print('str no match. str = %s'%identifier)
+                quit()
+        elif isinstance(identifier, int):
+            VideoItem(identifier).run()
+
 if __name__=='__main__':
-    Danmu(5415480).run()
-    # Danmu('http://bangumi.bilibili.com/anime/2993/').run()
+    DanmuGetter(1687843) # 单 P 测试
+    DanmuGetter('https://www.bilibili.com/video/av5415480') # 多 P 测试
+    DanmuGetter('http://bangumi.bilibili.com/anime/2993')   # 番组测试（同 av)
+    DanmuGetter('https://bangumi.bilibili.com/anime/5800/') # 番组测试（不同 av)

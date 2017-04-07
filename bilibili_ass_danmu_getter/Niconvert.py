@@ -16,6 +16,8 @@ Style: AcplayDefault, %(font_name)s, %(font_size)s, &H55FFFFFF, &H88FFFFFF, &H88
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
 
+LINE_SPACE = 1.15
+
 class NicoSubtitle:
 
     (SCROLL, TOP, BOTTOM, NOT_SUPPORT) = range(4)
@@ -203,7 +205,7 @@ class AssSubtitle:
         if self.nico_subtitle.style == NicoSubtitle.SCROLL:
             x1 = self.video_width + (self.base_font_size * self.text_length) / 2
             x2 = -(self.base_font_size * self.text_length) / 2
-            y = (self.nico_subtitle.index % self.line_count + 1) * self.base_font_size
+            y = int((self.nico_subtitle.index % self.line_count + 1) * (self.base_font_size * LINE_SPACE))
 
             if y < self.font_size:
                 y = self.font_size
@@ -211,7 +213,6 @@ class AssSubtitle:
         elif self.nico_subtitle.style == NicoSubtitle.BOTTOM:
             line_index = choose_line_count(AssSubtitle.bottom_subtitles, self.nico_subtitle.start_seconds)
             AssSubtitle.bottom_subtitles[line_index] = self.end_seconds
-
             x = self.video_width / 2
             y = self.video_height - (self.base_font_size * line_index + self.bottom_margin)
 
@@ -257,7 +258,7 @@ class AssSubtitle:
                 styled_text=self.styled_text)
 
 #Convert from xml string and return ass string.
-def convert(input, resolution='1920:1080', font_name='黑体',font_size=36,line_count=18,bottom_margin=5,shift=0):
+def convert(input, resolution='1920:1080', font_name='黑体', font_size=36, line_count=24, bottom_margin=5, shift=0):
     XML_NODE_RE = re.compile('<d p="([^"]*)">([^<]*)</d>')
     nico_subtitles = []
     nico_subtitle_lines = XML_NODE_RE.findall(input)

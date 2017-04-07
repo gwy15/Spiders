@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
+import re, time
 
 ASS_HEADER_TPL = '''[Script Info]
 ScriptType: v4.00+
@@ -17,32 +17,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
 TOP_TIME = 4
 
-LINE_POOL = {} # 保存已经被占用的行 LINE_POOL[line_number] = start_time@this_line
-LINE_POOL_TOP = {}
-LINE_POOL_BOTTOM = {}
-def get_line_number(start, end, _max, mydict = LINE_POOL, delta = 2):
-    ''' 返回值应该位于[1, max_number] '''
-    res = None
-    for i in range(_max):
-        if i not in mydict.keys(): # 没出现过这一行
-            mydict[i] = start
-            res = i
-            break
-        if start - mydict[i] > delta: # 前方弹幕出发后 2s 后跟上
-            mydict[i] = start
-            res = i
-            break
-    if not res:
-        mydict[0] = start
-        res = 0
-    return res + 1
 
-def get_line_number_top(start, end, _max):
-    res = get_line_number(start, end, _max, LINE_POOL_TOP, TOP_TIME + 0.1)
-    return res - 1
-def get_line_number_bottom(start, end, _max):
-    res = get_line_number(start, end, _max, LINE_POOL_BOTTOM, TOP_TIME + 0.1)
-    return res - 1
+    # 保存已经被占用的行 LINE_POOL[line_number] = start_time@this_line
+
+
 
 class NicoSubtitle:
 
@@ -143,6 +121,15 @@ class NicoSubtitle:
         return False
 
 class AssSubtitle:
+    LINE_POOL = {}
+    LINE_POOL_BOTTOM = {}
+    LINE_POOL_TOP = {}
+    @staticmethod
+    def clean():
+        AssSubtitle.LINE_POOL.clear()
+        AssSubtitle.LINE_POOL_BOTTOM.clear()
+        AssSubtitle.LINE_POOL_TOP.clear()
+
     def __init__(self, nico_subtitle,
                  video_width, video_height,
                  base_font_size, line_count,
@@ -201,26 +188,54 @@ class AssSubtitle:
 
     def init_font_size(self):
         return self.nico_subtitle.font_size - NicoSubtitle.FLASH_FONT_SIZE + self.base_font_size
-
+    def get_line_number(self, mydict = LINE_POOL, delta = 2):
+        ''' 返回值应该位于[1, max_number] '''
+        start, end, _max = self.start_seconds, self.end_seconds, self.line_count
+        res = -1
+        for i in range(_max):
+            if i not in mydict.keys(): # 没出现过这一行
+                mydict[i] = start
+                res = i
+                break
+            if start - mydict[i] > delta: # 前方弹幕出发后 2s 后跟上
+                mydict[i] = start
+                res = i
+                break
+        if res == -1: # 没有空余，选择最优解。(最早出发的弹幕)
+            minStart = 99999999
+            sol = 0
+            for line in mydict:
+                if mydict[line] < minStart:
+                    sol = line
+                    minStart = mydict[line]
+            res = sol
+            mydict[sol] = start
+        return res + 1
+    def get_line_number_top(self):
+        res = self.get_line_number(AssSubtitle.LINE_POOL_TOP, TOP_TIME + 0.1)
+        return res - 1
+    def get_line_number_bottom(self):
+        res = self.get_line_number(AssSubtitle.LINE_POOL_BOTTOM, TOP_TIME + 0.1)
+        return res - 1
     def init_position(self):
 
         if self.nico_subtitle.style == NicoSubtitle.SCROLL:
             x1 = self.video_width + (self.base_font_size * self.text_length) / 2
             x2 = -(self.base_font_size * self.text_length) / 2
 
-            line_number = get_line_number(self.start_seconds, self.end_seconds, self.line_count)
+            line_number = self.get_line_number()
             y = int(line_number * (self.base_font_size * (1+self.line_space)))
             y1, y2 = y, y
         elif self.nico_subtitle.style == NicoSubtitle.BOTTOM:
             x = self.video_width / 2
-            line_number = get_line_number_bottom(self.start_seconds, self.end_seconds, self.line_count)
+            line_number = self.get_line_number_bottom()
             y = self.video_height - int(line_number * (self.base_font_size * (1+self.line_space))) + self.bottom_margin
 
             x1, x2 = x, x
             y1, y2 = y, y
         else: # TOP
             x = self.video_width / 2
-            line_number = get_line_number_top(self.start_seconds, self.end_seconds, self.line_count)
+            line_number = self.get_line_number_top()
             y = int(line_number * (self.base_font_size * (1+self.line_space)))
 
             x1, x2 = x, x
@@ -242,7 +257,9 @@ class AssSubtitle:
         else:
             font_size_markup = '\\fs%d' % self.font_size
         if self.nico_subtitle.style == NicoSubtitle.SCROLL:
-            style_markup = '\\move(%d, %d, %d, %d)' % (self.x1, self.y1, self.x2, self.y2)
+            # print((self.x1, self.y1, self.x2, self.y2))
+            style_markup = r'\move(%d, %d, %d, %d)' % (self.x1, self.y1, self.x2, self.y2)
+            # print(style_markup)
         else:
             style_markup = '\\a6\\pos(%d, %d)' % (self.x1, self.y1)
         markup = ''.join([style_markup, color_markup, border_markup, font_size_markup])
@@ -250,13 +267,16 @@ class AssSubtitle:
 
     @property
     def ass_line(self):
-        return 'Dialogue: 3,%(start)s,%(end)s,AcplayDefault,,0000,0000,0000,,%(styled_text)s' % dict(
+        res = 'Dialogue: 3,%(start)s,%(end)s,AcplayDefault,,0000,0000,0000,,%(styled_text)s' % dict(
                 start=self.start,
                 end=self.end,
                 styled_text=self.styled_text)
+        # print(res)
+        return res
 
 #Convert from xml string and return ass string.
 def convert(input, resolution='1920:1080', font_name='黑体', font_size=36, line_count=24, bottom_margin=5, shift=0, line_space = 0.15):
+    AssSubtitle.clean()
     XML_NODE_RE = re.compile('<d p="([^"]*)">([^<]*)</d>')
     nico_subtitles = []
     nico_subtitle_lines = XML_NODE_RE.findall(input)

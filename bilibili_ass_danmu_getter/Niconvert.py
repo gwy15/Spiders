@@ -10,7 +10,7 @@ PlayResY: %(video_height)s
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: AcplayDefault, %(font_name)s, %(font_size)s, &H11FFFFFF, &H00FFFFFF, &HAA000000, &HAA000000, -1, 0, 0, 0, 100, 100, 0.00, 0.00, 1, 1.5, 0.5, 2, 20, 20, 20, 0
+Style: AcplayDefault, %(font_name)s, %(font_size)s, &H55FFFFFF, &H88FFFFFF, &H88000000, &HEE000000, -1, 0, 0, 0, 100, 100, 0.00, 0.00, 1, 1.5, 0.5, 2, 20, 20, 20, 0
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -257,7 +257,7 @@ class AssSubtitle:
                 styled_text=self.styled_text)
 
 #Convert from xml string and return ass string.
-def convert(input, resolution='1920:1080', font_name='黑体',font_size=48,line_count=15,bottom_margin=5,shift=0):
+def convert(input, resolution='1920:1080', font_name='黑体',font_size=36,line_count=18,bottom_margin=5,shift=0):
     XML_NODE_RE = re.compile('<d p="([^"]*)">([^<]*)</d>')
     nico_subtitles = []
     nico_subtitle_lines = XML_NODE_RE.findall(input)

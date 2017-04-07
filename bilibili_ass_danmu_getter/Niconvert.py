@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
+import re, time
 
 ASS_HEADER_TPL = '''[Script Info]
 ScriptType: v4.00+
@@ -22,7 +22,7 @@ LINE_POOL_TOP = {}
 LINE_POOL_BOTTOM = {}
 def get_line_number(start, end, _max, mydict = LINE_POOL, delta = 2):
     ''' 返回值应该位于[1, max_number] '''
-    res = None
+    res = -1
     for i in range(_max):
         if i not in mydict.keys(): # 没出现过这一行
             mydict[i] = start
@@ -32,9 +32,15 @@ def get_line_number(start, end, _max, mydict = LINE_POOL, delta = 2):
             mydict[i] = start
             res = i
             break
-    if not res:
-        mydict[0] = start
-        res = 0
+    if res == -1: # 没有空余，选择最优解。(最早出发的弹幕)
+        minStart = 99999999
+        sol = 0
+        for line in mydict:
+            if mydict[line] < minStart:
+                sol = line
+                minStart = mydict[line]
+        res = sol
+        mydict[sol] = start
     return res + 1
 
 def get_line_number_top(start, end, _max):
@@ -209,6 +215,7 @@ class AssSubtitle:
             x2 = -(self.base_font_size * self.text_length) / 2
 
             line_number = get_line_number(self.start_seconds, self.end_seconds, self.line_count)
+            
             y = int(line_number * (self.base_font_size * (1+self.line_space)))
             y1, y2 = y, y
         elif self.nico_subtitle.style == NicoSubtitle.BOTTOM:
@@ -257,6 +264,7 @@ class AssSubtitle:
 
 #Convert from xml string and return ass string.
 def convert(input, resolution='1920:1080', font_name='黑体', font_size=36, line_count=24, bottom_margin=5, shift=0, line_space = 0.15):
+    
     XML_NODE_RE = re.compile('<d p="([^"]*)">([^<]*)</d>')
     nico_subtitles = []
     nico_subtitle_lines = XML_NODE_RE.findall(input)

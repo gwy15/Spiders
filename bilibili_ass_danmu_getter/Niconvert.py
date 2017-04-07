@@ -188,28 +188,54 @@ class AssSubtitle:
 
     def init_font_size(self):
         return self.nico_subtitle.font_size - NicoSubtitle.FLASH_FONT_SIZE + self.base_font_size
-
+    def get_line_number(self, mydict = LINE_POOL, delta = 2):
+        ''' 返回值应该位于[1, max_number] '''
+        start, end, _max = self.start_seconds, self.end_seconds, self.line_count
+        res = -1
+        for i in range(_max):
+            if i not in mydict.keys(): # 没出现过这一行
+                mydict[i] = start
+                res = i
+                break
+            if start - mydict[i] > delta: # 前方弹幕出发后 2s 后跟上
+                mydict[i] = start
+                res = i
+                break
+        if res == -1: # 没有空余，选择最优解。(最早出发的弹幕)
+            minStart = 99999999
+            sol = 0
+            for line in mydict:
+                if mydict[line] < minStart:
+                    sol = line
+                    minStart = mydict[line]
+            res = sol
+            mydict[sol] = start
+        return res + 1
+    def get_line_number_top(self):
+        res = self.get_line_number(AssSubtitle.LINE_POOL_TOP, TOP_TIME + 0.1)
+        return res - 1
+    def get_line_number_bottom(self):
+        res = self.get_line_number(AssSubtitle.LINE_POOL_BOTTOM, TOP_TIME + 0.1)
+        return res - 1
     def init_position(self):
 
         if self.nico_subtitle.style == NicoSubtitle.SCROLL:
             x1 = self.video_width + (self.base_font_size * self.text_length) / 2
             x2 = -(self.base_font_size * self.text_length) / 2
 
-            line_number = get_line_number(self.start_seconds, self.end_seconds, self.line_count)
-            
+            line_number = self.get_line_number()
             y = int(line_number * (self.base_font_size * (1+self.line_space)))
-            print(f"line = {line_number}, y = {y}")
             y1, y2 = y, y
         elif self.nico_subtitle.style == NicoSubtitle.BOTTOM:
             x = self.video_width / 2
-            line_number = get_line_number_bottom(self.start_seconds, self.end_seconds, self.line_count)
+            line_number = self.get_line_number_bottom()
             y = self.video_height - int(line_number * (self.base_font_size * (1+self.line_space))) + self.bottom_margin
 
             x1, x2 = x, x
             y1, y2 = y, y
         else: # TOP
             x = self.video_width / 2
-            line_number = get_line_number_top(self.start_seconds, self.end_seconds, self.line_count)
+            line_number = self.get_line_number_top()
             y = int(line_number * (self.base_font_size * (1+self.line_space)))
 
             x1, x2 = x, x
@@ -247,40 +273,6 @@ class AssSubtitle:
                 styled_text=self.styled_text)
         # print(res)
         return res
-
-def get_line_number(start, end, _max, mydict = AssSubtitle.LINE_POOL, delta = 2):
-    ''' 返回值应该位于[1, max_number] '''
-    res = -1
-    for i in range(_max):
-        if i not in mydict.keys(): # 没出现过这一行
-            print('new at %d'%i)
-            mydict[i] = start
-            res = i
-            break
-        if start - mydict[i] > delta: # 前方弹幕出发后 2s 后跟上
-            print('start = %f, linestart = %f, line = %d'%(start, mydict[i], i))
-            mydict[i] = start
-            res = i
-            break
-    if res == -1: # 没有空余，选择最优解。(最早出发的弹幕)
-        print(mydict)
-        minStart = 99999999
-        sol = 0
-        for line in mydict:
-            if mydict[line] < minStart:
-                sol = line
-                minStart = mydict[line]
-        res = sol
-        mydict[sol] = start
-        print('选择最优解：line = %d'%sol)
-    return res + 1
-
-def get_line_number_top(start, end, _max):
-    res = get_line_number(start, end, _max, AssSubtitle.LINE_POOL_TOP, TOP_TIME + 0.1)
-    return res - 1
-def get_line_number_bottom(start, end, _max):
-    res = get_line_number(start, end, _max, AssSubtitle.LINE_POOL_BOTTOM, TOP_TIME + 0.1)
-    return res - 1
 
 #Convert from xml string and return ass string.
 def convert(input, resolution='1920:1080', font_name='黑体', font_size=36, line_count=24, bottom_margin=5, shift=0, line_space = 0.15):

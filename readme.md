@@ -31,3 +31,24 @@
 + 储存图片使用其标题，结合 everything 斗图好帮手。
 + 使用多线程。
 + 可视化进度条
+
+## ZhihuDaily
+
+目前只实现了爬取标题，以后会添加一点内容。
+
+## weiboAlbum
+
+针对一个用户的相册进行爬取。目前只能爬取 24 张图片，待完善。
+
+需要说明的是，为了避免登陆验证，用户需要在 weiboAlbum 的目录下建立一个`config.json`，保存用户的 headers，一般只需要 Cookie 和 User-Agent 就可以了。
+
+例如
+>>>
+    {
+        "headers" : {
+            "Cookie":"I'm Cookie",
+            "User-Agent":"I'm User-Agent"
+        }
+    }
+
+这样。

@@ -3,8 +3,10 @@ __pycache__/
 /zhuangbi.info/img
 *.txt
 *.conf
+config.json
 xml
 ass
 *.xml
 *.ass
 test.py
+images

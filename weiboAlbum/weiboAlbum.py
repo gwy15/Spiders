@@ -3,6 +3,7 @@ import json
 import os, os.path
 import traceback
 import time
+import random
 from multiprocessing.dummy import Pool as ThreadPool
 
 import requests
@@ -26,24 +27,27 @@ class WeiboAlbum():
             traceback.print_exc()
 
     def getConfig(self):
+        '读取配置文件'
         with open('config.json', 'r') as f:
             js = json.loads(f.read())
             self.headers = js['headers']
 
     def getPhotoslist(self):
+        '读取相册里的图片列表。返回 [(uid, mid, pid)]'
         content = self.getContent(self.url)
         if not content: return None
         li = re.findall(r'uid=(\d+)&mid=(\d+)&pid=([\d\w]+)&', content)
         return li
 
     def getContent(self, url):
+        '返回 url 的 content'
         response = self.getResponse(url)
         if response is None: return None
         content = response.content.decode('utf-8')
         return content
-        
 
     def getResponse(self, url):
+        '返回 url 的 response'
         try:
             res = requests.get(url, headers=self.headers)
             return res
@@ -52,24 +56,26 @@ class WeiboAlbum():
             return None
 
     def getPhotosAddresses(self, photosList):
+        '解析图片的直链地址，返回 [url]'
         photosAddresses = set()
 
         def task(tup):
-            uid, mid, pid = tup
-            url = f'http://photo.weibo.com/{uid}/wbphotos/large/mid/{mid}/pid/{pid}'
-            content = self.getContent(url)
-            if not content: return
-            photoAddress = self.getPhotoAddress(content)
+            photoAddress = self.getPhotoAddress(tup)
             photosAddresses.add(photoAddress)
             print(f'get adress: {photoAddress}')
-            time.sleep(0.5)
+            time.sleep(0.5 + random.random())
 
         pool = ThreadPool(10)
         pool.map(task, photosList)
         pool.close()
         return photosAddresses
 
-    def getPhotoAddress(self, content:str):
+    def getPhotoAddress(self, tup:tuple):
+        '解析对应 uid, mid, pid 的图片直链'
+        uid, mid, pid = tup
+        url = f'http://photo.weibo.com/{uid}/wbphotos/large/mid/{mid}/pid/{pid}'
+        content = self.getContent(url)
+        if not content: return
         res = re.findall(r'http://.*\.sinaimg.cn/large/[\d\w]+.jpg', content)
         if len(res) != 1:
             print('find multi targets in getPhotoAddress')
@@ -77,14 +83,17 @@ class WeiboAlbum():
         return res[0]
 
     def downloadPhotos(self, photosAddresses):
+        '下载图片直链列表里面的图片'
         def task(url):
             self.downloadPhoto(url)
             print(f'complete: {url}')
+            time.sleep(0.5 + random.random())
         pool = ThreadPool(10)
         pool.map(task, photosAddresses)
         pool.close()
     
     def downloadPhoto(self, photoAdress):
+        '下载直链对应的图片'
         response = self.getResponse(photoAdress)
         if response is None: return None
         fileName = self.getName(photoAdress)
@@ -92,6 +101,7 @@ class WeiboAlbum():
             f.write(response.content)
     
     def getName(self, url):
+        '从直链里面解析图片命名'
         fileName = re.findall(r'/([^/]+\.(jpg|png|bmp|jpeg|webm|JPG|PNG|BMP|JPEG|WEBM))', url)[0][0]
         fileName = os.path.join(self.root, fileName)
         return fileName

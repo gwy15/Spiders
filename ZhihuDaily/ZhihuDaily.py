@@ -39,7 +39,8 @@ class ZhihuDaily():
         self.title = soup.title.text
     
     def print(self):
-        print('%8d  %s'%(self.id, self.title))
+        if self.title:
+            print('%8d  %s'%(self.id, self.title))
 
 def main():
     pool = ThreadPool(10)

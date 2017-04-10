@@ -3,6 +3,7 @@ import json
 import os, os.path
 import traceback
 import time
+from multiprocessing.dummy import Pool as ThreadPool
 
 import requests
 
@@ -52,15 +53,21 @@ class WeiboAlbum():
 
     def getPhotosAddresses(self, photosList):
         photosAddresses = set()
-        for uid, mid, pid in photosList:
+
+        def task(tup):
+            uid, mid, pid = tup
             url = f'http://photo.weibo.com/{uid}/wbphotos/large/mid/{mid}/pid/{pid}'
             content = self.getContent(url)
-            if not content: continue
+            if not content: return
             photoAddress = self.getPhotoAddress(content)
             photosAddresses.add(photoAddress)
             print(f'get adress: {photoAddress}')
             time.sleep(0.5)
-        return list(photosAddresses)
+
+        pool = ThreadPool(10)
+        pool.map(task, photosList)
+        pool.close()
+        return photosAddresses
 
     def getPhotoAddress(self, content:str):
         res = re.findall(r'http://.*\.sinaimg.cn/large/[\d\w]+.jpg', content)
@@ -70,9 +77,12 @@ class WeiboAlbum():
         return res[0]
 
     def downloadPhotos(self, photosAddresses):
-        for address in photosAddresses:
-            self.downloadPhoto(address)
-            print(f'complete: {address}')
+        def task(url):
+            self.downloadPhoto(url)
+            print(f'complete: {url}')
+        pool = ThreadPool(10)
+        pool.map(task, photosAddresses)
+        pool.close()
     
     def downloadPhoto(self, photoAdress):
         response = self.getResponse(photoAdress)

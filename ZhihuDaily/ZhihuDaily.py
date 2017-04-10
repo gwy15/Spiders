@@ -1,5 +1,9 @@
+from multiprocessing.dummy import Pool as ThreadPool
+
 import requests
 from bs4 import BeautifulSoup as bs
+
+# import ProgressBar
 
 class ZhihuDaily():
     def __init__(self, id):
@@ -21,11 +25,14 @@ class ZhihuDaily():
                 return None
             content = res.content.decode()
             return content
+        except requests.exceptions.BaseHTTPError:
+            print('except at id = %d'%self.id)
+            return None
         finally:
             pass
         
     def parse(self, content:str):
-        if not content:
+        if content is None:
             self.title = None
             return None
         soup = bs(content, 'html.parser')
@@ -35,7 +42,12 @@ class ZhihuDaily():
         print('%8d  %s'%(self.id, self.title))
 
 def main():
-    ZhihuDaily(1).print()
+    pool = ThreadPool(10)
+    def task(i):
+        ZhihuDaily(i).print()
+    pool.map(task, range(100))
+    pool.close()
+        
 
 if __name__ == '__main__':
     main()

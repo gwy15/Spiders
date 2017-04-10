@@ -97,7 +97,7 @@ class WeiboAlbum():
         return fileName
 
 def main():
-    WeiboAlbum(1005056159370668).run()
+    WeiboAlbum(1005055913848279).run()
 
 if __name__ == '__main__':
     main()

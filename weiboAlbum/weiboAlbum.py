@@ -8,17 +8,21 @@ from multiprocessing.dummy import Pool as ThreadPool
 import requests
 
 class WeiboAlbum():
-    def __init__(self, id, root='images'):
-        self.id = id
+    def __init__(self, page_id, root='images'):
+        self.page_id = page_id
         self.root = root
-        self.url = 'http://weibo.com/p/%d/photos'%id
+        self.url = 'http://weibo.com/p/%d/photos'%page_id
     
     def run(self):
+        if not os.path.exists(self.root):
+            os.mkdir(self.root)
+        self.getConfig()
+
+    def downloadPage(self, n):
+        url = f'http://weibo.com/p/aj/album/loading?ajwvr=6&type=photo&page_id={self.page_id}&page={n}&ajax_call=1'
         try:
-            if not os.path.exists(self.root):
-                os.mkdir(self.root)
-            self.getConfig()
-            photosList = self.getPhotoslist()
+            # FIXME
+            photosList = self.getPhotoslist('http://weibo.com/p/%d/photos'%self.page_id)
             addresses = self.getPhotosAddresses(photosList)
             self.downloadPhotos(addresses)
         except:
@@ -30,8 +34,8 @@ class WeiboAlbum():
             js = json.loads(f.read())
             self.headers = js['headers']
 
-    def getPhotoslist(self):
-        content = self.getContent(self.url)
+    def getPhotoslist(self, url):
+        content = self.getContent(url)
         if not content: return None
         li = re.findall(r'uid=(\d+)&mid=(\d+)&pid=([\d\w]+)&', content)
         return li

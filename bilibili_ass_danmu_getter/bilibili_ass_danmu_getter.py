@@ -103,13 +103,16 @@ class BanguimiEpisode(BaseVideo):
         return (j['indexTitle'], j['longTitle'], int(j['danmaku']))
 
 class Bangumi():
-    def __init__(self, id):
-        self.banguimiID = id
+    def __init__(self, bid, assRoot='ass', xmlRoot='xml'):
+        self.banguimiID = bid
+        self.assRoot = assRoot
+        self.xmlRoot = xmlRoot
+
     def run(self):
         episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
         for item in episodesInfo:
             eID = item[2]
-            BanguimiEpisode(eID).run()
+            BanguimiEpisode(eID, self.assRoot, self.xmlRoot).run()
 
     def getEpisodesInfoFromBangumiID(self, BID):
         r'''

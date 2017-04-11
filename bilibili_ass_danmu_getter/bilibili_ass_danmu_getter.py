@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup as bs
 import Niconvert
 
 class BaseVideo():
+    def __init__(self, assRoot='ass', xmlRoot='xml'):
+        self.assRoot = assRoot
+        self.xmlRoot = xmlRoot
     def getDanmu(self, cid, title):
         '''
         通过 cid 下载弹幕
@@ -23,19 +26,21 @@ class BaseVideo():
         return xml
 
     def writeAss(self, ass, filename):
-        if not os.path.exists('ass'):
-            os.mkdir('ass')
-        with open(os.path.join('ass', '%s.ass'%(filename)), 'w', encoding='utf-8') as f:
+        if not os.path.exists(self.assRoot):
+            os.mkdir(self.assRoot)
+        with open(os.path.join(self.assRoot, '%s.ass'%(filename)), 'w', encoding='utf-8') as f:
             f.write(ass)
     def writeXML(self, xml, filename):
-        if not os.path.exists('xml'):
-            os.mkdir('xml')
-        with open(os.path.join('xml', '%s.xml'%(filename)), 'w', encoding='utf-8') as f:
+        if not os.path.exists(self.xmlRoot):
+            os.mkdir(self.xmlRoot)
+        with open(os.path.join(self.xmlRoot, '%s.xml'%(filename)), 'w', encoding='utf-8') as f:
             f.write(xml)
 
 class VideoItem(BaseVideo):
-    def __init__(self, id):
-        self.aid = id
+    def __init__(self, aid, assRoot = 'ass', xmlRoot = 'xml'):
+        self.aid = aid
+        self.assRoot = assRoot
+        self.xmlRoot = xmlRoot
 
     def run(self):
         """
@@ -75,8 +80,10 @@ class VideoItem(BaseVideo):
         return res
 
 class BanguimiEpisode(BaseVideo):
-    def __init__(self, episodeID):
+    def __init__(self, episodeID, assRoot = 'ass', xmlRoot = 'xml'):
         self.episodeID = episodeID
+        self.assRoot = assRoot
+        self.xmlRoot = xmlRoot
 
     def run(self):
         self.getEpisodeDanmu(self.episodeID)
@@ -96,13 +103,16 @@ class BanguimiEpisode(BaseVideo):
         return (j['indexTitle'], j['longTitle'], int(j['danmaku']))
 
 class Bangumi():
-    def __init__(self, id):
-        self.banguimiID = id
+    def __init__(self, bid, assRoot='ass', xmlRoot='xml'):
+        self.banguimiID = bid
+        self.assRoot = assRoot
+        self.xmlRoot = xmlRoot
+
     def run(self):
         episodesInfo = self.getEpisodesInfoFromBangumiID(self.banguimiID)
         for item in episodesInfo:
             eID = item[2]
-            BanguimiEpisode(eID).run()
+            BanguimiEpisode(eID, self.assRoot, self.xmlRoot).run()
 
     def getEpisodesInfoFromBangumiID(self, BID):
         r'''
@@ -119,6 +129,10 @@ class Bangumi():
             except:
                 print('failed in getAidFromBangumiID(bid = %d)'%BID)
                 return
+        try:
+            self.title = js['result']['bangumi_title']
+        except:
+            self.title = '获取番组名字出错'
 
         res = []
         for item in js['result']['episodes']:

@@ -9,6 +9,7 @@
 
 + xml 转 ass 部分的代码使用了 [danmu2ass](https://danmu2ass.codeplex.com/) 的代码。
 + 目前支持单P 一般视频、多P 一般视频，单集正版番组，多集正版番组下载。
++ 更改了原 xml 转 ass 的弹幕位置算法和显示效果，看起来更舒服。
 
 ## NetMusic
 

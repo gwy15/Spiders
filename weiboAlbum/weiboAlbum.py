@@ -35,9 +35,10 @@ class WeiboAlbum():
 
     def getConfig(self):
         '读取配置文件'
-        with open('config.json', 'r') as f:
-            js = json.loads(f.read())
-            self.headers = js['headers']
+        # with open('config.json', 'r') as f:
+        #     js = json.loads(f.read())
+        #     self.headers = js['headers']
+        self.headers = json.load(open('config.json'))['headers']
         self.headers['Referer'] = f'http://weibo.com/p/{self.page_id}/photos'
         self.uid = re.findall(r'uid=(\d+)', self.getContent(self.mainUrl))[0]
         print(f'获得uid: {self.uid}')

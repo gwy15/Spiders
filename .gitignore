@@ -1,12 +1,13 @@
 .vscode/
 __pycache__/
-/zhuangbi.info/img
+img
 *.txt
 *.conf
-config.json
+*.json
 xml
 ass
 *.xml
 *.ass
 test.py
 images
+*.html

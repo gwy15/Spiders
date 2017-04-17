@@ -32,7 +32,7 @@ class My285Book:
             return self._getPage(page)
         except:
             time.sleep(2)
-            return self._getPage
+            return self._getPage(page)
 
     def _getPage(self, page):
         url = self.url%page

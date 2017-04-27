@@ -6,7 +6,7 @@ import re
 from bs4 import BeautifulSoup as bs
 import os
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
     format='[%(levelname)s] (%(asctime)s) %(message)s',
     datefmt='%y-%m-%d %H:%M:%S')
 
@@ -17,6 +17,7 @@ class PixivItem():
     def __init__(self, headers):
         self.headers = headers
     def getPic(self, illust_id):
+        logging.info(f'beginning to get illust_id {illust_id}')
         pageURL = f'https://www.pixiv.net/member_illust.php?mode=medium&illust_id={illust_id}'
         self.session = requests.Session()
         self.session.headers = self.headers
@@ -33,7 +34,7 @@ class PixivItem():
         res = re.findall(r'「([^」]+)」/「([^」]+)」\[pixiv\]', pageTitle)[0]
         self.title = res[0]
         self.artist = res[1]
-        logging.debug(f'title: {self.title}, artist: {self.artist}')
+        logging.info(f'title: {self.title}, artist: {self.artist}')
         
         # get pic url
         imgSoups = soup.find_all('img', {'class':"original-image"})
@@ -44,7 +45,7 @@ class PixivItem():
         logging.debug(f'get oriImageURL: {self.oriImageURL}')
 
         self.downloadImage(self.oriImageURL)
-        logging.info(f'picture {illust_id} got.')
+        logging.info(f'picture {illust_id} done.')
 
     def downloadImage(self, url):
         try:
@@ -76,8 +77,10 @@ class PixivResult():
         logging.debug(f'__init__ get config done.')
 
     def getPage(self, keyword, page=1):
+        logging.info(f'beginning to get page {page}')
+
         keywordEncoded = urllib.parse.quote(keyword)
-        searchPageURL = f'https://www.pixiv.net/search.php?s_mode=s_tag&word={keywordEncoded}'
+        searchPageURL = f'https://www.pixiv.net/search.php?word={keywordEncoded}&order=date_d&p={page}'
         logging.debug(f'search word = "{keyword}"')
 
         # get result page
@@ -100,12 +103,15 @@ class PixivResult():
         return res
 
     def getPic(self, illust_id):
-        logging.debug(f'beginning to get picture for {illust_id}')
         PixivItem(self.headers).getPic(illust_id)
 
 def getPixiv(keyword, page=1):
     if not os.path.exists(path):
         os.mkdir(path)
-    PixivResult().getPage(keyword, page)
+    for i in range(page):
+        PixivResult().getPage(keyword, i+1)
 
-getPixiv(keyword)
+# getPixiv(keyword, 2)
+PixivResult().getPage(keyword, 3)
+PixivResult().getPage(keyword, 4)
+PixivResult().getPage(keyword, 5)

@@ -31,7 +31,7 @@ class PixivItem():
         soup = bs(pageContent, 'html.parser')
         pageTitle = soup.head.find_all('meta', {'property':"og:title"})[0]['content']
         logging.debug(f'get page title: "{pageTitle}"')
-        res = re.findall(r'「([^」]+)」/「([^」]+)」\[pixiv\]', pageTitle)[0]
+        res = re.findall(r'^「(.+)」/「([^」]+)」\[pixiv\]$', pageTitle)[0]
         self.title = res[0]
         self.artist = res[1]
         logging.info(f'title: {self.title}, artist: {self.artist}')
@@ -64,7 +64,7 @@ class PixivItem():
                 print(self.session.headers)
                 quit()
 
-        imageName = path + os.sep + self.title + '.' + url.split('.')[-1]
+        imageName = path + os.sep + self.title + ' - ' + self.artist + '.' + url.split('.')[-1]
         imageName = imageName.replace('*', '※').replace('?','？')
         with open(imageName, 'wb') as f:
             f.write(response.content)
@@ -111,7 +111,7 @@ def getPixiv(keyword, page=1):
     for i in range(page):
         PixivResult().getPage(keyword, i+1)
 
-# getPixiv(keyword, 2)
-PixivResult().getPage(keyword, 3)
-PixivResult().getPage(keyword, 4)
-PixivResult().getPage(keyword, 5)
+getPixiv(keyword, 5)
+# PixivResult().getPage(keyword, 3)
+# PixivResult().getPage(keyword, 4)
+# PixivResult().getPage(keyword, 5)

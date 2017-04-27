@@ -50,6 +50,6 @@ class My285Book:
         return text
 
 def main():
-    My285Book(url, 1, 10)
+    My285Book(url, int(input('start')), int(input('end')))
 
 if __name__ == '__main__':main()

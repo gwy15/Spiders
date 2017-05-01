@@ -52,12 +52,7 @@ class PixivItem():
         logging.debug(f'get page title: "{pageTitle}"')
         res = re.findall(r'^「(.+)」/「([^」]+)」\[pixiv\]$', pageTitle)[0]
         self.title = res[0]
-        self.artist = res[1]
-        
-        i = -1
-        while self.artist[i] == '.':
-            self.artist = self.artist[:i-1] + '·' + self.artist[i+1:]
-            i -= 1
+        self.artist = res[1].replace('.', '·')
 
         logging.debug(f'title: "{self.title}", artist: "{self.artist}"')
 

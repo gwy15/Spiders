@@ -13,11 +13,15 @@ path = 'img'
 class PixivItem():
     def __init__(self, illust_id, headers):
         self.illust_id = illust_id
+        self.pageURL = f'https://www.pixiv.net/member_illust.php?mode=medium&illust_id={self.illust_id}'
         self.headers = headers
         self.session = requests.Session()
         self.session.headers = self.headers
 
     def downloadImageTo(self, url, imageName):
+        if os.path.exists(imageName):
+            logging.debug('img existed. skipping...')
+            return
         try:
             h = {
                 'Referer':self.headers['Referer'],
@@ -63,17 +67,16 @@ class PixivItem():
 class PixivSinglePic(PixivItem):
     def __init__(self, illust_id, headers):
         PixivItem.__init__(self, illust_id, headers)
-        self.pageURL = f'https://www.pixiv.net/member_illust.php?mode=medium&illust_id={illust_id}'
         self.session.headers['Referer'] = self.pageURL
 
     def getPic(self):
-        logging.info(f'single pic. Beginning to get illust_id {self.illust_id}')
+        logging.info(f'getting pic {self.illust_id}...')
         soup = self.getSoup(self.pageURL)
         logging.debug(f'page for {self.illust_id} get.')
 
         # get title and artist
         self.getTitleAndArtist(soup)
-        
+
         # get pic url
         imgSoups = soup.find_all('img', {'class':"original-image"})
         if len(imgSoups) == 0:
@@ -87,7 +90,43 @@ class PixivSinglePic(PixivItem):
         logging.info(f'picture {self.illust_id} done.')
 
 class PixivAlbum(PixivItem):
-    pass
+    def __init__(self, illust_id, headers):
+        PixivItem.__init__(self, illust_id, headers)
+        self.albumURL = f'https://www.pixiv.net/member_illust.php?mode=manga&illust_id={illust_id}'
+        self.session.headers['Referer'] = self.albumURL
+    
+    def getAlbum(self):
+        logging.info(f'getting album {self.illust_id}...')
+        
+        # get title
+        soup = self.getSoup(self.pageURL)
+        logging.debug(f'page for {self.illust_id} (main page) get.')
+        self.getTitleAndArtist(soup)
+        
+        # get pic urls
+        picURLs = set()
+        soup = self.getSoup(self.albumURL)
+        imageContainers = soup.find_all('div', {'class':'item-container'})
+        for item in imageContainers:
+            picURLs.add(item.img['data-src'])
+        
+        # download
+        count = 1
+        for url in picURLs:
+            self.downloadImage(url)
+            logging.info(f'pic {count} done.')
+            count += 1
+        logging.info(f'album {self.illust_id} done.')
+
+    def downloadImage(self, url):
+        thisPath = path + os.sep + self.title + ' - ' + self.artist
+        if not os.path.exists(thisPath):
+            os.mkdir(thisPath)
+
+        num = re.findall(r'p(\d+)', url)[0]
+        imageName = thisPath + os.sep + num + '.' + url.split('.')[-1]
+        imageName = imageName.replace('*', '※').replace('?','？')
+        self.downloadImageTo(url, imageName)
 
 class PixivResult():
     def __init__(self):
@@ -117,12 +156,15 @@ class PixivResult():
         albumSet = set()
         for item in imageList:
             illust_id = re.findall(r'illust_id=(\d+)', str(item))[0]
-            if 'multiple' in item.a['class']:
+            if len(item.a['class']) == 3:
+                # single
+                picSet.add(illust_id)
+            elif 'multiple' in item.a['class']:
                 # album
                 albumSet.add(illust_id)
             else:
-                # single
-                picSet.add(illust_id)
+                # unknown
+                pass
         logging.debug(f'picSet: {picSet}')
         logging.debug(f'albumSet: {albumSet}')
 
@@ -154,13 +196,13 @@ def main():
     for item in sys.argv[1:]:
         if item.upper() in ('D', 'DEBUG', '-D', '-DEBUG'):
             logging.basicConfig(level=logging.DEBUG,
-            format='[%(levelname)s] (%(asctime)s) %(message)s',
+            format='(%(asctime)s) - [%(levelname)s] %(message)s',
             datefmt='%y-%m-%d %H:%M:%S')
         else:
             logging.basicConfig(level=logging.INFO,
-            format='[%(levelname)s] (%(asctime)s) %(message)s',
+            format='(%(asctime)s) - [%(levelname)s] %(message)s',
             datefmt='%y-%m-%d %H:%M:%S')
-    getPixiv(keyword, 1)
+    getPixiv(keyword, 2)
     # PixivResult().getPage(keyword, 3)
     # PixivResult().getPage(keyword, 4)
     # PixivResult().getPage(keyword, 5)

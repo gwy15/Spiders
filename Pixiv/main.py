@@ -6,6 +6,7 @@ import re
 from bs4 import BeautifulSoup as bs
 import os
 import sys
+from multiprocessing.dummy import Pool as ThreadPool
 
 keyword = '1000users入り エロマンガ'
 path = 'img'
@@ -111,11 +112,21 @@ class PixivAlbum(PixivItem):
             picURLs.add(item.img['data-src'])
         
         # download
-        count = 1
-        for url in picURLs:
+        # count = 1
+        # for url in picURLs:
+        #     self.downloadImage(url)
+        #     logging.info(f'pic {count} done.')
+        #     count += 1
+        self.count = 1
+        def func(url):
             self.downloadImage(url)
-            logging.info(f'pic {count} done.')
-            count += 1
+            logging.debug(f'({self.title} - {self.artist}) pic {self.count} done.')
+            self.count += 1
+        pool = ThreadPool(5)
+        pool.map(func, picURLs)
+        pool.close()
+        pool.join()
+
         logging.info(f'album {self.illust_id} done.')
 
     def downloadImage(self, url):
@@ -169,10 +180,24 @@ class PixivResult():
         logging.debug(f'albumSet: {albumSet}')
 
         # get
-        for illust_id in picSet:
-            self.getPic(illust_id)
-        for illust_id in albumSet:
-            self.getAlbum(illust_id)
+        self.getPics(picSet)
+        self.getAlbums(albumSet)
+
+    def getPics(self, picSet):
+        # for illust_id in picSet:
+        #     self.getPic(illust_id)
+        pool = ThreadPool(5)
+        pool.map(self.getPic, picSet)
+        pool.close()
+        pool.join()
+    
+    def getAlbums(self, albumSet):
+        # for illust_id in albumSet:
+        #    self.getAlbum(illust_id)
+        pool = ThreadPool(3)
+        pool.map(self.getAlbum, albumSet)
+        pool.close()
+        pool.join()
 
     def getConfig(self):
         with open('config.json') as f:
@@ -202,7 +227,7 @@ def main():
             logging.basicConfig(level=logging.INFO,
             format='(%(asctime)s) - [%(levelname)s] %(message)s',
             datefmt='%y-%m-%d %H:%M:%S')
-    getPixiv(keyword, 2)
+    getPixiv(keyword, 3)
     # PixivResult().getPage(keyword, 3)
     # PixivResult().getPage(keyword, 4)
     # PixivResult().getPage(keyword, 5)

@@ -53,6 +53,8 @@ class PixivItem():
         res = re.findall(r'^「(.+)」/「([^」]+)」\[pixiv\]$', pageTitle)[0]
         self.title = res[0]
         self.artist = res[1].replace('.', '·')
+        self.title = re.sub(r'[\|\/]', '', self.title)
+        self.artist = re.sub(r'[\|\/]', '', self.artist)
 
         logging.debug(f'title: "{self.title}", artist: "{self.artist}"')
 

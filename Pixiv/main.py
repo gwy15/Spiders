@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup as bs
 import os
 import sys
 from multiprocessing.dummy import Pool as ThreadPool
+import time
 
-keyword = '1000users入り エロマンガ'
 path = 'img'
 
 class PixivItem():
@@ -53,7 +53,13 @@ class PixivItem():
         res = re.findall(r'^「(.+)」/「([^」]+)」\[pixiv\]$', pageTitle)[0]
         self.title = res[0]
         self.artist = res[1]
-        logging.info(f'title: "{self.title}", artist: "{self.artist}"')
+        
+        i = -1
+        while self.artist[i] == '.':
+            self.artist = self.artist[:i-1] + '·' + self.artist[i+1:]
+            i -= 1
+
+        logging.debug(f'title: "{self.title}", artist: "{self.artist}"')
 
     def getSoup(self, url):
         pageContent = self.getContent(url)
@@ -88,7 +94,7 @@ class PixivSinglePic(PixivItem):
 
         # download
         self.downloadImage(self.oriImageURL)
-        logging.info(f'picture {self.illust_id} done.')
+        logging.info(f'picture {self.title} - {self.artist} ({self.illust_id}) done.')
 
 class PixivAlbum(PixivItem):
     def __init__(self, illust_id, headers):
@@ -111,12 +117,11 @@ class PixivAlbum(PixivItem):
         for item in imageContainers:
             picURLs.add(item.img['data-src'])
         
-        # download
-        # count = 1
-        # for url in picURLs:
-        #     self.downloadImage(url)
-        #     logging.info(f'pic {count} done.')
-        #     count += 1
+        # mkdir
+        thisPath = path + os.sep + self.title + ' - ' + self.artist
+        if not os.path.exists(thisPath):
+            os.mkdir(thisPath)
+
         self.count = 1
         def func(url):
             self.downloadImage(url)
@@ -127,12 +132,10 @@ class PixivAlbum(PixivItem):
         pool.close()
         pool.join()
 
-        logging.info(f'album {self.illust_id} done.')
+        logging.info(f'album {self.title} - {self.artist} ({self.illust_id}) done.')
 
     def downloadImage(self, url):
         thisPath = path + os.sep + self.title + ' - ' + self.artist
-        if not os.path.exists(thisPath):
-            os.mkdir(thisPath)
 
         num = re.findall(r'p(\d+)', url)[0]
         imageName = thisPath + os.sep + num + '.' + url.split('.')[-1]
@@ -186,16 +189,22 @@ class PixivResult():
     def getPics(self, picSet):
         # for illust_id in picSet:
         #     self.getPic(illust_id)
+        def func(x):
+            self.getPic(x)
+            time.sleep(1)
         pool = ThreadPool(5)
-        pool.map(self.getPic, picSet)
+        pool.map(func, picSet)
         pool.close()
         pool.join()
     
     def getAlbums(self, albumSet):
         # for illust_id in albumSet:
         #    self.getAlbum(illust_id)
+        def func(x):
+            self.getAlbum(x)
+            time.sleep(1)
         pool = ThreadPool(3)
-        pool.map(self.getAlbum, albumSet)
+        pool.map(func, albumSet)
         pool.close()
         pool.join()
 
@@ -218,19 +227,28 @@ def getPixiv(keyword, page=1):
         PixivResult().getPage(keyword, i+1)
 
 def main():
+    logging.basicConfig(level=logging.INFO,
+        format='(%(asctime)s) - [%(levelname)s] %(message)s',
+        datefmt='%y-%m-%d %H:%M:%S')
+    keyword = ''
+    page = 5
     for item in sys.argv[1:]:
-        if item.upper() in ('D', 'DEBUG', '-D', '-DEBUG'):
+        if item.upper() in ('-D', '-DEBUG'):
             logging.basicConfig(level=logging.DEBUG,
-            format='(%(asctime)s) - [%(levelname)s] %(message)s',
-            datefmt='%y-%m-%d %H:%M:%S')
+                format='(%(asctime)s) - [%(levelname)s] %(message)s',
+                datefmt='%y-%m-%d %H:%M:%S')
+        elif 'page=' in item.lower():
+            num = int(re.findall('page=(\d*)', item)[0])
         else:
-            logging.basicConfig(level=logging.INFO,
-            format='(%(asctime)s) - [%(levelname)s] %(message)s',
-            datefmt='%y-%m-%d %H:%M:%S')
-    getPixiv(keyword, 3)
-    # PixivResult().getPage(keyword, 3)
-    # PixivResult().getPage(keyword, 4)
-    # PixivResult().getPage(keyword, 5)
+            keyword += item + ' '
+    keyword = keyword[:-1]
+
+    if len(keyword) == 0:
+        keyword = '1000users入り エロマンガ'
+    getPixiv(keyword, page)
+    
+    # PixivResult().getPage('1000users入り エロマンガ', 4)
+    # PixivResult().getPage('1000users入り エロマンガ', 5)
 
 if __name__ == '__main__':
     main()

@@ -53,3 +53,28 @@
     }
 
 这样。
+
+## Pixiv
+
+爬取 Pixiv 搜索结果页的图片
+
+* 单张插画
+* 多张集合
+* [x] 暂不支持动画
+
+用法：
+> py ./main.py エロマンガ先生 1000users入り page=5
+
+代表搜索关键字为“エロマンガ先生 1000users入り”，保存前 5 页结果。
+
+需要主意的是，需要在目录下建立`config.json`，形式如下
+
+    {
+        "headers":{
+            "Cookie":"Copy your cookie here",
+            "Host":"www.pixiv.net",
+            "User-Agent":"your UA"
+        }
+    }
+
+没有过多增加鲁棒性，所以有时候会有服务器断开连接的情况。重新跑一次（不会重复下载存在的文件）一般能解决问题。

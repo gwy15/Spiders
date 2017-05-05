@@ -60,8 +60,8 @@ class PixivItem():
             x = x.replace('<', '＜').replace('>', '＞').replace(':', '：')
             x = x.replace('?', '？').replace('"', "'")
             return x
-        self.title = fun(x)
-        self.artist = fun(x)
+        self.title = fun(self.title)
+        self.artist = fun(self.artist)
 
         logging.debug(f'title: "{self.title}", artist: "{self.artist}"')
 

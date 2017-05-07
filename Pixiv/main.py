@@ -71,7 +71,12 @@ class PixivItem():
         return soup
 
     def getContent(self, url):
-        pageResponse = self.session.get(url)
+        try:
+            pageResponse = self.session.get(url)
+        except requests.exceptions.ConnectionError:
+            logging.warning(f'Get content failed for url {url}. Retry in 10 seconds...')
+            time.sleep(10)
+            pageResponse = self.session.get(url)
         pageContent = pageResponse.content.decode()
         return pageContent
 
@@ -224,7 +229,7 @@ class PixivResult():
         PixivAlbum(illust_id, self.headers).getAlbum()
 
 def getPixiv(keyword, page=1):
-    logging.debug(f'starting to get pixiv (keyword = "{keyword}", page={page})')
+    logging.info(f'starting to get pixiv (keyword = "{keyword}", page={page})')
     if not os.path.exists(path):
         os.mkdir(path)
     for i in range(page):
@@ -241,8 +246,8 @@ def main():
             logging.basicConfig(level=logging.DEBUG,
                 format='(%(asctime)s) - [%(levelname)s] %(message)s',
                 datefmt='%y-%m-%d %H:%M:%S')
-        elif 'page=' in item.lower():
-            num = int(re.findall('page=(\d*)', item)[0])
+        elif re.match(r'-?page=\d+', item.lower()):
+            num = int(re.findall('-?page=(\d*)', item)[0])
         else:
             keyword += item + ' '
     keyword = keyword[:-1]

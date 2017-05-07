@@ -52,7 +52,7 @@ class VideoItem(BaseVideo):
             if len(CidInfo) == 1: # 单 P
                 title = self.getSingleTitle(self.aid)
             else:
-                title = item[1]
+                title = item[1].replace('?', '？')
             self.getDanmu(cid, title) # 使用分 P 的标题
 
     def getSingleTitle(self, aid):
@@ -61,9 +61,9 @@ class VideoItem(BaseVideo):
         
         soup = bs(page, 'html.parser')
         title = soup.head.title.text
-        title.replace(' 番剧 bilibili 哔哩哔哩弹幕视频网', '')
+        title = title.replace(' 番剧 bilibili 哔哩哔哩弹幕视频网', '')
         title = re.sub(r'_.{2,}_.{2,}_bilibili_哔哩哔哩', '', title)
-        title.replace('?', '？')
+        title = title.replace('?', '？')
         title = re.sub(r'[\\/:*?"<>|]', '', title)
         return title
 
@@ -90,6 +90,7 @@ class BanguimiEpisode(BaseVideo):
 
     def getEpisodeDanmu(self, episodeID):
         index, title, cid = self.getSingleEpisodeInfo(episodeID)
+        title = title.replace('?', '？')
         self.getDanmu(cid, index+' '+title)
 
     def getSingleEpisodeInfo(self, episodeID):

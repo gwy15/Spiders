@@ -17,6 +17,7 @@ class PixivItem():
         self.session = requests.Session()
         self.session.headers = self.headers
 
+    # base download method
     def downloadImageTo(self, url, imageName):
         if os.path.exists(imageName):
             logging.debug('img existed. skipping...')

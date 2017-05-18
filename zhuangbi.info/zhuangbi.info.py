@@ -15,7 +15,8 @@ class ZhuangbiGetter():
         self.bar = ProgressBar.ProgressBar(20*pages, 40)
         if not os.path.exists('img'):
             os.mkdir('img')
-    
+        print('init complete')    
+        
     def get(self) -> None:
         pool = ThreadPool(min(4, self.n))
         pool.map(self.getSingePage, [i+1 for i in range(self.n)])
@@ -67,11 +68,18 @@ class ZhuangbiGetter():
         c = r.content.decode('utf-8')
         soup = bs(c, 'html.parser')
         imglist = soup.find_all('div', {'class':'picture-list'})[1]
-        imgs = imglist.find_all('a', {'class':'picture'})
+        imgs = imglist.find_all('img', {'class':'thumbnail'})
         res = []
         for item in imgs:
             title = item['alt']
-            imgurl = item['href']
+            imgurl = item['src']
+            _ = re.findall(
+                r'http[^\?]+',
+                imgurl)
+            if len(_) == 0:
+                print(imgurl)
+            else:
+                imgurl = _[0]
             res.append((title, imgurl))
         return res
 

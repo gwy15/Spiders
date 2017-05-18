@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup as bs
 import os
 import sys
 from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing.dummy import Lock as ThreadLock
 import time
 
 class PixivItem():
@@ -31,12 +32,11 @@ class PixivItem():
             if response.status_code != 200:
                 logging.error(f'{response.status_code} Error, retrying...')
                 raise ConnectionError
-        except ConnectionError as ex:
-            response = self.session.get(url, headers=self.headers)
-            if response.status_code == 403:
-                logging.error('403 Error.')
-                print(self.session.headers)
-                quit()
+        except Exception as ex:
+            logging.error(f'except at downloadImageTo: {ex}')
+            import traceback
+            logging.debug(f'{traceback.format_exc()}')
+            return
         with open(imageName, 'wb') as f:
             f.write(response.content)
 
@@ -48,7 +48,7 @@ class PixivItem():
     def getTitleAndArtist(self, soup):
         # soup = bs(pageContent, 'html.parser')
         pageTitle = soup.head.find_all('meta', {'property':"og:title"})[0]['content']
-        logging.debug(f'get page title: "{pageTitle}"')
+        logging.debug(f'get page title: "{pageTitle}" ({self.illust_id})')
         res = re.findall(r'^「(.+)」/「([^」]+)」\[pixiv\]$', pageTitle)[0]
         self.title = res[0]
         self.artist = res[1]
@@ -62,7 +62,7 @@ class PixivItem():
         self.title = fun(self.title)
         self.artist = fun(self.artist)
 
-        logging.debug(f'title: "{self.title}", artist: "{self.artist}"')
+        logging.debug(f'title: "{self.title}", artist: "{self.artist}", illust_id: {self.illust_id}')
 
     def getSoup(self, url):
         pageContent = self.getContent(url)
@@ -72,8 +72,10 @@ class PixivItem():
     def getContent(self, url):
         try:
             pageResponse = self.session.get(url)
-        except requests.exceptions.ConnectionError:
+        except Exception as ex:
             logging.warning(f'Get content failed for url {url}. Retry in 10 seconds...')
+            import traceback
+            logging.debug(f'{ex}: \n {traceback.format_exc()}')
             time.sleep(10)
             pageResponse = self.session.get(url)
         pageContent = pageResponse.content.decode()
@@ -131,10 +133,13 @@ class PixivAlbum(PixivItem):
             os.mkdir(thisPath)
 
         self.count = 1
+        self.lock = ThreadLock()
         def func(url):
             self.downloadImage(url, path)
+            self.lock.acquire()
             logging.debug(f'({self.title} - {self.artist}) pic {self.count} done.')
             self.count += 1
+            self.lock.release()
         pool = ThreadPool(5)
         pool.map(func, picURLs)
         pool.close()
